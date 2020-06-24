@@ -1,6 +1,7 @@
 import sys
 import os
 import shutil
+import urllib
 
 import aiohttp
 from aiogram import Bot, types
@@ -9,6 +10,7 @@ from aiogram.utils import executor
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.utils.helper import Helper, HelperMode, ListItem
+from aiogram.utils.executor import start_webhook
 
 import interface
 
@@ -26,7 +28,18 @@ def is_int(s):
     except ValueError:
         return False
 
-bot = Bot(token=os.environ['TELEGRAM_TOKEN'])
+
+BOT_TOKEN = os.environ['TELEGRAM_TOKEN']
+is_web_hook = False
+if 'WEBHOOK_HOST_ADDR' in os.environ and 'PORT' in os.environ:
+    WEBHOOK_HOST = os.environ['WEBHOOK_HOST_ADDR']
+    WEBHOOK_PATH = f'/webhook/{BOT_TOKEN}'
+    WEBHOOK_URL = urllib.parse.urljoin(WEBHOOK_HOST, WEBHOOK_PATH)
+    WEBAPP_HOST = '0.0.0.0'
+    WEBAPP_PORT = os.environ['PORT']
+    is_web_hook = True
+
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 dp.middleware.setup(LoggingMiddleware())
 
@@ -148,9 +161,25 @@ async def state_style(message: types.Message):
 async def echo_message(msg: types.Message):
     await bot.send_message(msg.from_user.id, 'Набери /go, чтобы начать, или /help, чтобы посмотреть справку.')
 
+async def startup(dispatcher: Dispatcher):
+    if is_web_hook:
+        await bot.set_webhook(WEBHOOK_URL)
+
 async def shutdown(dispatcher: Dispatcher):
-    await dispatcher.storage.close()
-    await dispatcher.storage.wait_closed()
+    if not is_web_hook:
+        await dispatcher.storage.close()
+        await dispatcher.storage.wait_closed()
 
 if __name__ == '__main__':
-    executor.start_polling(dp, on_shutdown=shutdown)
+    if is_web_hook:
+        start_webhook(
+            dispatcher=dp,
+            webhook_path=WEBHOOK_PATH,
+            on_startup=startup,
+            on_shutdown=shutdown,
+            skip_updates=False,
+            host=WEBAPP_HOST,
+            port=WEBAPP_PORT
+        )
+    else:
+        executor.start_polling(dp, on_shutdown=shutdown)
