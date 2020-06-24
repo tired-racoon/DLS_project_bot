@@ -47,8 +47,8 @@ def example_content():
 
 def do_style(msgnet, style, content, image):
     if type(content) is str:
-        content = utils.tensor_load_rgbimage(content, 512, keep_asp=True)
-    msgnet.setTarget(utils.tensor_load_rgbimage(style, 512).unsqueeze(0))
+        content = utils.tensor_load_rgbimage(content, 256, keep_asp=True)
+    msgnet.setTarget(utils.tensor_load_rgbimage(style, 256).unsqueeze(0))
     with torch.no_grad():
         im = msgnet(content.unsqueeze(0))[0]
     utils.tensor_save_rgbimage(im, image)
