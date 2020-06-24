@@ -131,7 +131,7 @@ async def state_style(message: types.Message):
     path_style = 'data/{}_style.jpg'.format(message.from_user.id)
     path_output = 'data/{}_output.jpg'.format(message.from_user.id)
     
-    message.photo[-1].download(path_content)
+    await message.photo[-1].download(path_content)
     await do_style(path_style, path_content, path_output)
 
     await types.ChatActions.upload_photo()
