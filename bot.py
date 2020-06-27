@@ -118,13 +118,14 @@ async def process_help_command(message: types.Message):
         'Чтобы посмотреть доступные стили, используйте команду "/styles n", где n от 0 до {} - номер стиля.\n'.format(n_styles - 1) + \
         'Чтобы начать и загрузить/выбрать стилевую картинку, наберите /go.\n' + \
         'Затем загрузите свою фотографию и Вы получите стилизованное картину в ответ!\n' + \
+        'Кроме того, Вы можете стилизовать селфи с помощью команды /gan.\n' + \
         'Вы всегда можете посмотреть эту информацию снова, набрав  команду /help.\n'
     
     await message.reply(msg, reply=False)
 
 @dp.message_handler(state='*', commands=['start'])
 async def process_start_command(message: types.Message):
-    await message.reply("Привет!\nЯ DLS Style transfer bot!\nНабери /go, чтобы начать, или /help, чтобы посмотреть справку.", reply=False)
+    await message.reply("Привет!\nЯ DLS Style transfer bot!\nНабери /go или /gan, чтобы начать, или /help, чтобы посмотреть справку.", reply=False)
 
 @dp.message_handler(state='*', commands=['styles'])
 async def process_styles_command(message: types.Message):
@@ -236,7 +237,7 @@ async def state_style(message: types.Message):
 
     await message.reply_media_group(media=media, reply=False)
     await state.reset_state()
-    await message.reply("Набери /go, чтобы начать снова.", reply=False)
+    await message.reply("Набери /go или /gan, чтобы начать снова.", reply=False)
 
     await gccollect()
 
@@ -244,7 +245,7 @@ async def state_style(message: types.Message):
 
 @dp.message_handler(state='*')
 async def echo_message(msg: types.Message):
-    await bot.send_message(msg.from_user.id, 'Набери /go, чтобы начать, или /help, чтобы посмотреть справку.')
+    await bot.send_message(msg.from_user.id, 'Набери /go или /gan, чтобы начать, или /help, чтобы посмотреть справку.')
 
 async def startup(dispatcher: Dispatcher):
     if is_web_hook:

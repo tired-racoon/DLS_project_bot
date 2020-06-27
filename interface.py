@@ -63,12 +63,11 @@ def example_content():
     return os.path.join(root, 'examples', 'ico.jpg')
 
 def do_style(msgnet, style, content, image):
-    if type(content) is str:
-        content = utils.tensor_load_rgbimage(content, 256, keep_asp=True)
-    msgnet.setTarget(utils.tensor_load_rgbimage(style, 256).unsqueeze(0))
     with torch.no_grad():
+        if type(content) is str:
+            content = utils.tensor_load_rgbimage(content, 256, keep_asp=True)
+        msgnet.setTarget(utils.tensor_load_rgbimage(style, 256).unsqueeze(0))
         im = msgnet(content.detach().unsqueeze(0))[0]
-        msgnet.ins.setTarget(0)
         utils.tensor_save_rgbimage(im, image)
 
 def zero_embeddings(batch):
@@ -91,10 +90,10 @@ def gan_unnormalize(t):
     t = t * 256.
     return t
 def do_gan(generator, content, image):
-    if type(content) is str:
-        content = utils.tensor_load_rgbimage(content, 256, keep_asp=False, need_normalize=False)
-    content = gan_normalize(content)
     with torch.no_grad():
+        if type(content) is str:
+            content = utils.tensor_load_rgbimage(content, 256, keep_asp=False, need_normalize=False)
+        content = gan_normalize(content)
         content = content.unsqueeze(0)
         content = cat_embeddings(content, zero_embeddings(content))
         im = split_only_batch(generator(content))[0]
