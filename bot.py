@@ -37,6 +37,7 @@ if 'WEBHOOK_HOST_ADDR' in os.environ and 'PORT' in os.environ:
     WEBHOOK_URL = urllib.parse.urljoin(WEBHOOK_HOST, WEBHOOK_PATH)
     WEBAPP_HOST = '0.0.0.0'
     WEBAPP_PORT = os.environ['PORT']
+    session = aiohttp.ClientSession()
     is_web_hook = True
 
 bot = Bot(token=BOT_TOKEN)
