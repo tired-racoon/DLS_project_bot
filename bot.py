@@ -23,6 +23,7 @@ class AppStates(Helper):
 
     STATE_LOAD_STYLE = ListItem()
     STATE_LOAD_CONTENT = ListItem()
+    STATE_LOAD_GAN_CONTENT = ListItem()
 
 def is_int(s):
     try:
@@ -50,7 +51,12 @@ dp.middleware.setup(LoggingMiddleware())
 
 net_instance = None
 net_users = 0
+net_gan_instance = None
+net_gan_users = 0
 net_mutex = threading.Lock()
+async def gccollect():
+    gc.collect()
+
 def get_net():
     net_mutex.acquire()
     global net_instance
@@ -69,7 +75,6 @@ def close_net():
     if net_users == 0:
         del net_instance
         net_instance = None
-        gc.collect()
     net_mutex.release()
 
 async def do_style(style, content, image):
@@ -77,6 +82,32 @@ async def do_style(style, content, image):
     interface.do_style(net, style, content, image)
     net = None
     close_net()
+
+def get_generator():
+    net_mutex.acquire()
+    global net_gan_instance
+    global net_gan_users
+    if net_gan_instance is None:
+        net_gan_instance = interface.create_gan()
+    net_gan_users = net_gan_users + 1
+    net_mutex.release()
+    return net_gan_instance
+
+def close_generator():
+    net_mutex.acquire()
+    global net_gan_instance
+    global net_gan_users
+    net_gan_users = net_gan_users - 1
+    if net_gan_users == 0:
+        del net_gan_instance
+        net_gan_instance = None
+    net_mutex.release()
+
+async def do_gan(content, image):
+    net = get_generator()
+    interface.do_gan(net, content, image)
+    net = None
+    close_generator()
 
 @dp.message_handler(state='*', commands=['help'])
 async def process_help_command(message: types.Message):
@@ -122,6 +153,36 @@ async def process_styles_command(message: types.Message):
     media.attach_photo(types.InputFile(styles[s][0]), 'Стиль')
     media.attach_photo(types.InputFile(styles[s][1]), 'Результат')
     await message.reply_media_group(media=media, reply=False)
+
+
+@dp.message_handler(state='*', commands=['gan'])
+async def process_gan_command(message: types.Message):
+    state = dp.current_state(user=message.from_user.id)
+    await state.set_state(AppStates.STATE_LOAD_GAN_CONTENT[0])
+    await message.reply('Попробуем GAN! Загрузи селфи с хорошим освещением...', reply=False)
+
+@dp.message_handler(state=AppStates.STATE_LOAD_GAN_CONTENT, content_types=types.ContentType.ANY)
+async def state_gan(message: types.Message):
+    state = dp.current_state(user=message.from_user.id)
+
+    if len(message.photo) == 0:
+        return await message.reply('Вы не загрузили картинку... Загрузите, пожалуйста.', reply=False)
+
+    path_content = 'data/{}_content_gan.jpg'.format(message.from_user.id)
+    path_output = 'data/{}_output.jpg'.format(message.from_user.id)
+    
+    await message.photo[-1].download(path_content)
+    await do_gan(path_content, path_output)
+
+    await types.ChatActions.upload_photo()
+    media = types.MediaGroup()
+    media.attach_photo(types.InputFile(path_output), 'Вот результат!')
+
+    await message.reply_media_group(media=media, reply=False)
+    await state.reset_state()
+    await message.reply("Набери /go или /gan, чтобы начать снова.", reply=False)
+
+    await gccollect()
 
 @dp.message_handler(state='*', commands=['go'])
 async def process_go_command(message: types.Message):
@@ -176,6 +237,8 @@ async def state_style(message: types.Message):
     await message.reply_media_group(media=media, reply=False)
     await state.reset_state()
     await message.reply("Набери /go, чтобы начать снова.", reply=False)
+
+    await gccollect()
 
 
 

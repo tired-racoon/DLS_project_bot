@@ -19,7 +19,7 @@ def unnormalize(t):
     t = t * 256.
     return t
 
-def tensor_load_rgbimage(filename, size=None, scale=None, keep_asp=False):
+def tensor_load_rgbimage(filename, size=None, scale=None, keep_asp=False, need_normalize=True):
     img = Image.open(filename).convert('RGB')
     if size is not None:
         if keep_asp:
@@ -32,11 +32,14 @@ def tensor_load_rgbimage(filename, size=None, scale=None, keep_asp=False):
         img = img.resize((int(img.size[0] / scale), int(img.size[1] / scale)), Image.ANTIALIAS)
     img = np.array(img).transpose(2, 0, 1)
     img = torch.from_numpy(img).float()
-    return normalize(img)
+    if need_normalize:
+        img = normalize(img)
+    return img
 
 
-def tensor_save_rgbimage(tensor, filename, cuda=False):
-    tensor = unnormalize(tensor)
+def tensor_save_rgbimage(tensor, filename, cuda=False, need_unnormalize=True):
+    if need_unnormalize:
+        tensor = unnormalize(tensor)
     if cuda:
         img = tensor.clone().cpu().clamp(0, 255).numpy()
     else:
