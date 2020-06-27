@@ -75,6 +75,8 @@ def close_net():
 async def do_style(style, content, image):
     net = get_net()
     interface.do_style(net, style, content, image)
+    net = None
+    close_net()
 
 @dp.message_handler(state='*', commands=['help'])
 async def process_help_command(message: types.Message):
