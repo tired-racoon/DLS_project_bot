@@ -12,6 +12,9 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.utils.helper import Helper, HelperMode, ListItem
 from aiogram.utils.executor import start_webhook
 
+import gc
+import threading
+
 import interface
 
 
@@ -37,7 +40,7 @@ if 'WEBHOOK_HOST_ADDR' in os.environ and 'PORT' in os.environ:
     WEBHOOK_URL = urllib.parse.urljoin(WEBHOOK_HOST, WEBHOOK_PATH)
     WEBAPP_HOST = '0.0.0.0'
     WEBAPP_PORT = os.environ['PORT']
-    session = aiohttp.ClientSession()
+    session = await aiohttp.ClientSession()
     is_web_hook = True
 
 bot = Bot(token=BOT_TOKEN)
@@ -47,11 +50,28 @@ dp.middleware.setup(LoggingMiddleware())
 
 
 net_instance = None
+net_users = 0
+net_mutex = threading.Lock()
 def get_net():
+    net_mutex.acquire()
     global net_instance
+    global net_users
     if net_instance is None:
         net_instance = interface.create_net()
+    net_users = net_users + 1
+    net_mutex.release()
     return net_instance
+
+def close_net():
+    net_mutex.acquire()
+    global net_instance
+    global net_users
+    net_users = net_users - 1
+    if net_users == 0:
+        del net_instance
+        net_instance = None
+        gc.collect()
+    net_mutex.release()
 
 async def do_style(style, content, image):
     net = get_net()
